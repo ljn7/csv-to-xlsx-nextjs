@@ -64,9 +64,9 @@ export default function Home() {
     );
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-	
-	const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-	const filename = `export_${timestamp}.xlsx`;
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `export_${timestamp}.xlsx`;
     XLSX.writeFile(wb, filename, { compression: true });
   };
 
@@ -114,130 +114,129 @@ export default function Home() {
   };
 
   return (
-  <main style={{ padding: 24 }}>
-    <h1>CSV to Excel Exporter</h1>
+    <main style={{ padding: 24 }}>
+      <h1>CSV to Excel Exporter</h1>
 
-    {/* Drag-and-drop upload zone */}
-    <div
-      {...getRootProps()}
-      style={{
-        border: "2px dashed #4a90e2",
-        borderRadius: 12,
-        padding: "40px",
-        textAlign: "center",
-        cursor: "pointer",
-        background: isDragActive ? "#1a2a5a" : "#0f1833",
-        color: "#cbd5e1",
-        marginBottom: 20,
-      }}
-    >
-      <input {...getInputProps()} />
-      {isDragActive ? (
-        <p>Drop the CSV file here...</p>
-      ) : (
-        <p>Drag & drop a CSV file here, or click to choose</p>
-      )}
-    </div>
-
-    {columns.length > 0 && (
+      {/* Drag-and-drop upload zone */}
       <div
+        {...getRootProps()}
         style={{
-          margin: "16px 0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          border: "2px dashed #4a90e2",
+          borderRadius: 12,
+          padding: "40px",
+          textAlign: "center",
+          cursor: "pointer",
+          background: isDragActive ? "#1a2a5a" : "#0f1833",
+          color: "#cbd5e1",
+          marginBottom: 20,
         }}
       >
-        {/* Column checkboxes */}
-        <div>
-          {columns.map((col) => (
-            <label key={col} style={{ marginRight: 12 }}>
-              <input
-                type="checkbox"
-                checked={selectedCols.includes(col)}
-                onChange={() =>
-                  setSelectedCols((prev) =>
-                    prev.includes(col)
-                      ? prev.filter((c) => c !== col)
-                      : [...prev, col]
-                  )
-                }
-              />
-              {col}
-            </label>
-          ))}
-        </div>
-
-        {/* Export button now aligned to the right of checkboxes */}
-        {sortedData.length > 0 && (
-          <button
-            onClick={exportXLSX}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "8px",
-              background: "#2563eb",
-              color: "white",
-              border: "none",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Export XLSX
-          </button>
+        <input {...getInputProps()} />
+        {isDragActive ? (
+          <p>Drop the CSV file here...</p>
+        ) : (
+          <p>Drag & drop a CSV file here, or click to choose</p>
         )}
       </div>
-    )}
 
-    {sortedData.length > 0 && (
-      <div style={{ border: "1px solid #243056", borderRadius: 12 }}>
-        {/* Header row */}
+      {columns.length > 0 && (
         <div
           style={{
+            margin: "16px 0",
             display: "flex",
             alignItems: "center",
-            background: "#12183a",
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
+            justifyContent: "space-between",
           }}
         >
-          <div style={{ display: "flex", flex: 1 }}>
-            {selectedCols.map((col) => (
-              <div
-                key={col}
-                style={{
-                  flex: 1,
-                  padding: "8px",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-                onClick={() => onHeaderClick(col)}
-              >
+          {/* Column checkboxes */}
+          <div>
+            {columns.map((col) => (
+              <label key={col} style={{ marginRight: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={selectedCols.includes(col)}
+                  onChange={() =>
+                    setSelectedCols((prev) =>
+                      prev.includes(col)
+                        ? prev.filter((c) => c !== col)
+                        : [...prev, col]
+                    )
+                  }
+                />
                 {col}
-                {sortConfig.key === col &&
-                  (sortConfig.direction === "asc"
-                    ? " 🔼"
-                    : sortConfig.direction === "desc"
-                    ? " 🔽"
-                    : "")}
-              </div>
+              </label>
             ))}
           </div>
+
+          {/* Export button now aligned to the right of checkboxes */}
+          {sortedData.length > 0 && (
+            <button
+              onClick={exportXLSX}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "8px",
+                background: "#2563eb",
+                color: "white",
+                border: "none",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Export XLSX
+            </button>
+          )}
         </div>
+      )}
 
-        {/* Virtualized list */}
-        <List
-          ref={listRef}
-          height={500}
-          itemCount={sortedData.length}
-          itemSize={getRowHeight}
-          width="100%"
-        >
-          {Row}
-        </List>
-      </div>
-    )}
-  </main>
-);
+      {sortedData.length > 0 && (
+        <div style={{ border: "1px solid #243056", borderRadius: 12 }}>
+          {/* Header row */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              background: "#12183a",
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+            }}
+          >
+            <div style={{ display: "flex", flex: 1 }}>
+              {selectedCols.map((col) => (
+                <div
+                  key={col}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                  }}
+                  onClick={() => onHeaderClick(col)}
+                >
+                  {col}
+                  {sortConfig.key === col &&
+                    (sortConfig.direction === "asc"
+                      ? " 🔼"
+                      : sortConfig.direction === "desc"
+                        ? " 🔽"
+                        : "")}
+                </div>
+              ))}
+            </div>
+          </div>
 
+          {/* Virtualized list */}
+          <List
+            ref={listRef}
+            height={500}
+            itemCount={sortedData.length}
+            itemSize={getRowHeight}
+            width="100%"
+          >
+            {Row}
+          </List>
+        </div>
+      )}
+    </main>
+  );
 }

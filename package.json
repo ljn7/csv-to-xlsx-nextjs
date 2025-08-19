@@ -1,22 +1,28 @@
 {
-  "name": "csv-to-xlsx-nextjs",
+  "name": "csv-to-xslx",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "lucide-react": "^0.540.0",
-    "next": "14.2.5",
-    "papaparse": "5.4.1",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "next": "15.4.7",
     "react-dropzone": "^14.3.8",
     "react-window": "^1.8.11",
+    "lucide-react": "^0.540.0",
+    "papaparse": "5.4.1",
     "xlsx": "0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.7",
+    "@eslint/eslintrc": "^3"
   }
 }
