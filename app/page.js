@@ -11,14 +11,15 @@ export default function Home() {
   const [columns, setColumns] = useState([]);
   const [selectedCols, setSelectedCols] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
-  const [filters, setFilters] = useState({});
+  const [filters, setFilters] = useState({}); // { col: { text, type, ignoreCase, minWords, maxWords } }
   const listRef = useRef();
 
-  // File Upload
+  // File upload
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
     Papa.parse(file, {
       header: true,
+      skipEmptyLines: true,
       complete: (results) => {
         setData(results.data);
         setColumns(results.meta.fields);
@@ -40,19 +41,29 @@ export default function Home() {
     sortable = sortable.filter((row) => {
       return selectedCols.every((col) => {
         const filter = filters[col];
-        if (!filter?.text) return true;
+        if (!filter) return true;
+
         const cellValue = row[col] || "";
+
+        // Text filtering
         const filterText = filter.ignoreCase
-          ? filter.text.toLowerCase()
-          : filter.text;
+          ? (filter.text || "").toLowerCase()
+          : filter.text || "";
+        const compareValue = filter.ignoreCase ? cellValue.toLowerCase() : cellValue;
 
-        const compareValue = filter.ignoreCase
-          ? cellValue.toLowerCase()
-          : cellValue;
+        let textMatch = true;
+        if (filter.text) {
+          if (filter.type === "exact") textMatch = compareValue === filterText;
+          else if (filter.type === "starts") textMatch = compareValue.startsWith(filterText);
+          else textMatch = compareValue.includes(filterText);
+        }
 
-        if (filter.type === "exact") return compareValue === filterText;
-        if (filter.type === "starts") return compareValue.startsWith(filterText);
-        return compareValue.includes(filterText);
+        // Word count filtering (Unicode letters only)
+        const wordCount = (cellValue.match(/\p{L}+/gu) || []).length;
+        const minMatch = filter.minWords !== undefined ? wordCount >= filter.minWords : true;
+        const maxMatch = filter.maxWords !== undefined ? wordCount <= filter.maxWords : true;
+
+        return textMatch && minMatch && maxMatch;
       });
     });
 
@@ -61,7 +72,6 @@ export default function Home() {
       sortable.sort((a, b) => {
         const aValue = a[sortConfig.key] || "";
         const bValue = b[sortConfig.key] || "";
-
         if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
@@ -104,18 +114,19 @@ export default function Home() {
     );
   };
 
-const getRowHeight = (index) => {
-  const row = sortedData[index];
-  if (!row) return 40;
-  let maxLen = 0;
-  selectedCols.forEach((col) => {
-    const val = String(row[col] || "");
-    if (val.length > maxLen) maxLen = val.length;
-  });
-  return Math.min(200, 40 + Math.floor(maxLen / 50) * 20);
-};
+  // Row height based on content
+  const getRowHeight = (index) => {
+    const row = sortedData[index];
+    if (!row) return 40;
+    let maxLen = 0;
+    selectedCols.forEach((col) => {
+      const val = String(row[col] || "");
+      if (val.length > maxLen) maxLen = val.length;
+    });
+    return Math.min(200, 40 + Math.floor(maxLen / 50) * 20);
+  };
 
-  // Export to Excel
+  // Export
   const exportToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(sortedData);
     const wb = XLSX.utils.book_new();
@@ -124,31 +135,13 @@ const getRowHeight = (index) => {
   };
 
   return (
-    <main
-      style={{
-        background: "linear-gradient(to bottom right, #0f172a, #1e293b)",
-        color: "white",
-        minHeight: "100vh",
-        padding: "2rem",
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
-      <h1 style={{ fontSize: "1.8rem", fontWeight: "bold", marginBottom: 16 }}>
-        CSV to XLSX Converter
-      </h1>
+    <main style={{ background: "#0f172a", color: "white", minHeight: "100vh", padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
+      <h1 style={{ fontSize: "1.8rem", fontWeight: "bold", marginBottom: 16 }}>CSV to XLSX Converter</h1>
 
-      {/* File upload */}
+      {/* File Upload */}
       <div
         {...getRootProps()}
-        style={{
-          border: "2px dashed #334155",
-          borderRadius: 12,
-          padding: "2rem",
-          textAlign: "center",
-          cursor: "pointer",
-          marginBottom: "2rem",
-          background: "#0f1833",
-        }}
+        style={{ border: "2px dashed #334155", borderRadius: 12, padding: "2rem", textAlign: "center", cursor: "pointer", marginBottom: "2rem", background: "#0f1833" }}
       >
         <input {...getInputProps()} />
         <p>Drag & drop your CSV file here, or click to select</p>
@@ -157,7 +150,7 @@ const getRowHeight = (index) => {
       {/* Column Selection */}
       {columns.length > 0 && (
         <div style={{ marginBottom: "1rem" }}>
-          <h2 className="font-semibold">Select Columns:</h2>
+          <h2>Select Columns:</h2>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
             {columns.map((col) => (
               <label key={col} style={{ display: "flex", gap: 4 }}>
@@ -165,11 +158,8 @@ const getRowHeight = (index) => {
                   type="checkbox"
                   checked={selectedCols.includes(col)}
                   onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedCols([...selectedCols, col]);
-                    } else {
-                      setSelectedCols(selectedCols.filter((c) => c !== col));
-                    }
+                    if (e.target.checked) setSelectedCols([...selectedCols, col]);
+                    else setSelectedCols(selectedCols.filter((c) => c !== col));
                   }}
                 />
                 {col}
@@ -179,18 +169,11 @@ const getRowHeight = (index) => {
         </div>
       )}
 
-      {/* Export Button */}
+      {/* Export */}
       {sortedData.length > 0 && (
         <button
           onClick={exportToExcel}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            background: "#2563eb",
-            color: "white",
-            fontWeight: "bold",
-            marginBottom: "1rem",
-          }}
+          style={{ padding: "8px 16px", borderRadius: 8, background: "#2563eb", color: "white", fontWeight: "bold", marginBottom: "1rem" }}
         >
           Export to XLSX
         </button>
@@ -199,18 +182,9 @@ const getRowHeight = (index) => {
       {/* Table */}
       {columns.length > 0 && (
         <div style={{ border: "1px solid #243056", borderRadius: 12 }}>
-          {/* Header row + filters */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              background: "#12183a",
-              position: "sticky",
-              top: 0,
-              zIndex: 10,
-            }}
-          >
-            {/* Filter inputs */}
+          {/* Filters + Headers */}
+          <div style={{ display: "flex", flexDirection: "column", background: "#12183a", position: "sticky", top: 0, zIndex: 10 }}>
+            {/* Filters */}
             <div style={{ display: "flex" }}>
               {selectedCols.map((col) => (
                 <div key={col} style={{ flex: 1, padding: "4px" }}>
@@ -221,32 +195,14 @@ const getRowHeight = (index) => {
                     onChange={(e) =>
                       setFilters((prev) => ({
                         ...prev,
-                        [col]: {
-                          ...(prev[col] || {
-                            type: "contains",
-                            ignoreCase: true,
-                          }),
-                          text: e.target.value,
-                        },
+                        [col]: { ...(prev[col] || { type: "contains", ignoreCase: true }), text: e.target.value },
                       }))
                     }
-                    style={{
-                      width: "100%",
-                      padding: "4px",
-                      borderRadius: 4,
-                      border: "1px solid #334155",
-                      background: "#0f1833",
-                      color: "#fff",
-                    }}
+                    style={{ width: "100%", padding: "4px", borderRadius: 4, border: "1px solid #334155", background: "#0f1833", color: "#fff" }}
                   />
                   <select
                     value={filters[col]?.type || "contains"}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        [col]: { ...(prev[col] || {}), type: e.target.value },
-                      }))
-                    }
+                    onChange={(e) => setFilters((prev) => ({ ...prev, [col]: { ...(prev[col] || {}), type: e.target.value } }))}
                     style={{ width: "100%", marginTop: 4 }}
                   >
                     <option value="contains">Contains</option>
@@ -257,68 +213,48 @@ const getRowHeight = (index) => {
                     <input
                       type="checkbox"
                       checked={filters[col]?.ignoreCase ?? true}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          [col]: {
-                            ...(prev[col] || {}),
-                            ignoreCase: e.target.checked,
-                          },
-                        }))
-                      }
+                      onChange={(e) => setFilters((prev) => ({ ...prev, [col]: { ...(prev[col] || {}), ignoreCase: e.target.checked } }))}
                     />
                     Ignore Case
                   </label>
+                  <div style={{ marginTop: 4 }}>
+                    <input
+                      type="number"
+                      placeholder="Min words"
+                      value={filters[col]?.minWords || ""}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, [col]: { ...(prev[col] || {}), minWords: e.target.value ? parseInt(e.target.value) : undefined } }))}
+                      style={{ width: "48%", marginRight: "4%", padding: "2px" }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max words"
+                      value={filters[col]?.maxWords || ""}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, [col]: { ...(prev[col] || {}), maxWords: e.target.value ? parseInt(e.target.value) : undefined } }))}
+                      style={{ width: "48%", padding: "2px" }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
 
-            {/* Column headers */}
+            {/* Headers */}
             <div style={{ display: "flex" }}>
               {selectedCols.map((col) => (
-                <div
-                  key={col}
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                  }}
-                  onClick={() => onHeaderClick(col)}
-                >
+                <div key={col} style={{ flex: 1, padding: "8px", cursor: "pointer", fontWeight: "bold" }} onClick={() => onHeaderClick(col)}>
                   {col}
-                  {sortConfig.key === col &&
-                    (sortConfig.direction === "asc"
-                      ? " 🔼"
-                      : sortConfig.direction === "desc"
-                      ? " 🔽"
-                      : "")}
+                  {sortConfig.key === col ? (sortConfig.direction === "asc" ? " 🔼" : sortConfig.direction === "desc" ? " 🔽" : "") : ""}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Virtualized list OR "no results" */}
+          {/* Rows */}
           {sortedData.length > 0 ? (
-            <List
-              ref={listRef}
-              height={500}
-              itemCount={sortedData.length}
-              itemSize={getRowHeight}
-              width="100%"
-            >
+            <List ref={listRef} height={500} itemCount={sortedData.length} itemSize={getRowHeight} width="100%">
               {Row}
             </List>
           ) : (
-            <div
-              style={{
-                padding: "20px",
-                textAlign: "center",
-                color: "#94a3b8",
-              }}
-            >
-              No results found
-            </div>
+            <div style={{ padding: "20px", textAlign: "center", color: "#94a3b8" }}>No results found</div>
           )}
         </div>
       )}
